@@ -42,12 +42,12 @@ func yourFunc() {
     // ##### Patch any Spec object #####
     // #################################
     // assign with your own spec
-    var spec interface{}
+    var spec *interface{}
     // patch is the patchutils.JsonPatch that will get executed once you execute the patchFunc, patchutils.PatchFunc.
     // err is an error from the patch generation process; executing patchFunc might return an error arising from the API calls.
     // use the wrapper function patchutils.JsonPatchSpecP if you don't need the generation error.
     // use the wrapper function patchutils.JsonPatchSpecQ if you only need the patchFunc.
-    patch, patchFunc, err := patchutils.JsonPatchSpec(ctx, clt, obj, &spec)
+    patch, patchFunc, err := patchutils.JsonPatchSpec(ctx, clt, obj, spec)
 
     // ############################################
     // ##### Patch a finalizer into an object #####
