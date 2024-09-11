@@ -147,20 +147,21 @@ func JsonPatchMapP(ctx context.Context, clt client.Client, obj client.Object, pa
 // in newMap; we use origMap to determine whether we need to add or replace. It will return JsonPatches for you to log,
 // the PatchFunc for you to execute, and an error if it fails to generate the patch
 func JsonPatchMap(ctx context.Context, clt client.Client, obj client.Object, path string, origMap, newMap map[string]string) ([]JsonPatch, PatchFunc, error) {
-	patchMapTemplate := "{\"op\": \"%s\", \"path\": \"%s/%s\", \"value\": \"%s\"}"
+	patchNewMapTemplate := "{\"op\": \"add\", \"path\": \"%s\", \"value\": {\"%s\": \"%s\"}}"
+	patchExistingMapTemplate := "{\"op\": \"%s\", \"path\": \"%s/%s\", \"value\": \"%s\"}"
+
 	var patches []string
 
 	if len(origMap) == 0 {
 		// no previous member exists - load add all given member to the patch
-		if len(newMap) == 1 {
-			// if we only patch one member and the original map doesn't exist, the key  should be un-sanitized and part of the value
-			singleNewMemberPatchTemplate := "{\"op\": \"add\", \"path\": \"%s\", \"value\": {\"%s\": \"%s\"}}"
-			for k, v := range newMap {
-				patches = append(patches, fmt.Sprintf(singleNewMemberPatchTemplate, path, UnSanitizeKeyForJsonPatch(k), v))
-			}
-		} else {
-			for k, v := range newMap {
-				patches = append(patches, fmt.Sprintf(patchMapTemplate, "add", path, k, v))
+		first := true
+		for k, v := range newMap {
+			if first {
+				// if the original map doesn't exist, the key should be un-sanitized and part of the value
+				patches = append(patches, fmt.Sprintf(patchNewMapTemplate, path, UnSanitizeKeyForJsonPatch(k), v))
+				first = false
+			} else {
+				patches = append(patches, fmt.Sprintf(patchExistingMapTemplate, "add", path, k, v))
 			}
 		}
 	} else {
@@ -169,11 +170,11 @@ func JsonPatchMap(ctx context.Context, clt client.Client, obj client.Object, pat
 			if value, found := origMap[k]; found {
 				if v != value {
 					// found existing member with the key and a different value - replace
-					patches = append(patches, fmt.Sprintf(patchMapTemplate, "replace", path, k, v))
+					patches = append(patches, fmt.Sprintf(patchExistingMapTemplate, "replace", path, k, v))
 				}
 			} else {
 				// existing member with the key not found - add
-				patches = append(patches, fmt.Sprintf(patchMapTemplate, "add", path, k, v))
+				patches = append(patches, fmt.Sprintf(patchExistingMapTemplate, "add", path, k, v))
 			}
 		}
 	}
