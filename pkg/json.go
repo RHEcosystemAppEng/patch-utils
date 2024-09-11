@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"slices"
 	"strings"
 )
 
@@ -107,7 +108,9 @@ func JsonPatchFinalizerOut(ctx context.Context, clt client.Client, obj client.Ob
 	var removeFinalizerPatch JsonPatch
 	if len(obj.GetFinalizers()) == 1 {
 		// remove all finalizers if only one exists
-		removeFinalizerPatch = JsonPatch{"{\"op\": \"remove\", \"path\": \"/metadata/finalizers\"}"}
+		if slices.Contains(obj.GetFinalizers(), finalizer) {
+			removeFinalizerPatch = JsonPatch{"{\"op\": \"remove\", \"path\": \"/metadata/finalizers\"}"}
+		}
 	} else {
 		// remove index-based specific finalizer if more than one exist
 		for idx, fin := range obj.GetFinalizers() {
@@ -116,9 +119,10 @@ func JsonPatchFinalizerOut(ctx context.Context, clt client.Client, obj client.Ob
 				break
 			}
 		}
-		if len(removeFinalizerPatch.Get()) == 0 {
-			return removeFinalizerPatch, nil, &NoPatchRequired{"finalizer index not found"}
-		}
+	}
+
+	if len(removeFinalizerPatch.Get()) == 0 {
+		return removeFinalizerPatch, nil, &NoPatchRequired{"finalizer index not found"}
 	}
 
 	return removeFinalizerPatch, func() error {
