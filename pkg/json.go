@@ -40,6 +40,11 @@ func SanitizeKeyForJsonPatch(key string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(key, "~", "~0"), "/", "~1")
 }
 
+// UnSanitizeKeyForJsonPatch does the opposite of SanitizeKeyForJsonPatch
+func UnSanitizeKeyForJsonPatch(key string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(key, "~1", "/"), "~0", "~")
+}
+
 // JsonPatchFinalizerInQ executes JsonPatchFinalizerInP, ignoring the patches. Use this function if you only need the
 // PatchFunc
 func JsonPatchFinalizerInQ(ctx context.Context, clt client.Client, obj client.Object, finalizer string) PatchFunc {
@@ -147,8 +152,16 @@ func JsonPatchMap(ctx context.Context, clt client.Client, obj client.Object, pat
 
 	if len(origMap) == 0 {
 		// no previous member exists - load add all given member to the patch
-		for k, v := range newMap {
-			patches = append(patches, fmt.Sprintf(patchMapTemplate, "add", path, k, v))
+		if len(newMap) == 1 {
+			// if we only patch one member and the original map doesn't exist, the key  should be un-sanitized and part of the value
+			singleNewMemberPatchTemplate := "{\"op\": \"add\", \"path\": \"%s\", \"value\": {\"%s\": \"%s\"}}"
+			for k, v := range newMap {
+				patches = append(patches, fmt.Sprintf(singleNewMemberPatchTemplate, path, UnSanitizeKeyForJsonPatch(k), v))
+			}
+		} else {
+			for k, v := range newMap {
+				patches = append(patches, fmt.Sprintf(patchMapTemplate, "add", path, k, v))
+			}
 		}
 	} else {
 		// found previous member - verify add/replace/exists before loading the given member to the patch
