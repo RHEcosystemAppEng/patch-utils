@@ -24,7 +24,7 @@ jobs:
       matrix:
         go: ["1.21", "stable"]
     steps:
-      - uses: actions/checkout@4
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go }}
